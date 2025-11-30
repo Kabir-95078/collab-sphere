@@ -1,5 +1,3 @@
-
-
 import { MOCK_FEED_POSTS, MOCK_FORUM_POSTS, MOCK_JOBS, MOCK_CREATORS } from '../constants';
 import { FeedPost, ForumPost, FreelanceJob, Creator, Platform, SystemAnalytics } from '../types';
 
@@ -119,8 +117,16 @@ export const getSystemAnalytics = async (): Promise<SystemAnalytics> => {
   
   const userCount = Object.keys(users).length;
   
-  // Mock growth data
-  const growth = [userCount - 5, userCount - 4, userCount - 2, userCount - 1, userCount, userCount + 2, userCount + 5];
+  // Mock growth data - ensure no negative values
+  const growth = [
+    Math.max(0, userCount - 5), 
+    Math.max(0, userCount - 4), 
+    Math.max(0, userCount - 2), 
+    Math.max(0, userCount - 1), 
+    userCount, 
+    userCount + 2, 
+    userCount + 5
+  ];
 
   return {
     totalUsers: userCount,

@@ -1,5 +1,10 @@
-import { Creator, Platform, CreatorLevel } from '../types';
+
+import { GoogleGenAI, Type } from "@google/genai";
+import { Creator, Platform } from '../types';
 import { MOCK_CREATORS } from '../constants';
+
+// Initialize Gemini
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 const NICHES = [
   'Tech & Gadgets', 'Gaming', 'Beauty & Makeup', 'Fitness & Health', 
@@ -83,5 +88,87 @@ export const fetchCreators = async (count: number = 12): Promise<Creator[]> => {
     console.error("Failed to fetch creators:", error);
     // Fallback to mocks if API fails, but randomize IDs to avoid key conflicts if called multiple times
     return MOCK_CREATORS.map(c => ({...c, id: Math.random().toString(36).substr(2, 9)}));
+  }
+};
+
+/**
+ * Intelligent Search using Gemini to find "real" or realistic creators
+ */
+export const searchCreators = async (query: string): Promise<Creator[]> => {
+  if (!query) return [];
+
+  const modelId = "gemini-2.5-flash";
+  const prompt = `
+    You are a data retrieval engine for social media influencers.
+    
+    Task: Find 8 REAL, EXISTING, and POPULAR content creators that match the search query: "${query}".
+    
+    Guidelines:
+    1. If the query matches a real famous creator (e.g. "MKBHD", "MrBeast", "Charli"), return their actual details.
+    2. If the query is a niche (e.g. "Tech", "Cooking"), return the most famous real creators in that niche.
+    3. If no specific real creators fit, generate highly realistic profiles based on current platform trends.
+    
+    For each creator, provide:
+    - name: Their real display name (e.g. "Marques Brownlee")
+    - handle: Their actual handle (e.g. "@mkbhd")
+    - platform: The platform they are primarily known for (YouTube, Instagram, or TikTok)
+    - subscribers: Their approximate real subscriber count formatted (e.g. "18.5M")
+    - niche: Their primary content category
+    - bio: A short, accurate bio describing their actual content style.
+    - tags: 3 specific keywords relevant to them.
+    - collabFee: An estimated professional collaboration fee in USD (e.g. 50000 for stars, 500 for micro).
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: modelId,
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              name: { type: Type.STRING },
+              handle: { type: Type.STRING },
+              platform: { type: Type.STRING },
+              subscribers: { type: Type.STRING },
+              niche: { type: Type.STRING },
+              bio: { type: Type.STRING },
+              tags: { type: Type.ARRAY, items: { type: Type.STRING } },
+              collabFee: { type: Type.NUMBER }
+            }
+          }
+        }
+      }
+    });
+
+    const text = response.text;
+    if (!text) return [];
+    
+    const data = JSON.parse(text);
+    
+    return data.map((item: any, index: number) => {
+      // Robust platform parsing
+      let platform = Platform.YOUTUBE;
+      const pLower = (item.platform || '').toLowerCase();
+      
+      if (pLower.includes('insta')) platform = Platform.INSTAGRAM;
+      else if (pLower.includes('tik')) platform = Platform.TIKTOK;
+      else if (pLower.includes('tube')) platform = Platform.YOUTUBE;
+
+      return {
+        id: `search-${Date.now()}-${index}`,
+        ...item,
+        platform: platform,
+        // Use a consistent avatar generator seeded with their name to keep it looking stable but dynamic
+        avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(item.name)}&background=random&color=fff&size=200`
+      };
+    });
+
+  } catch (error) {
+    console.error("AI Search failed:", error);
+    return [];
   }
 };

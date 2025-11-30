@@ -5,10 +5,11 @@ import { getCreatorLevel, getLevelColor, getLevelBg, getLevelIcon } from '../uti
 interface CreatorCardProps {
   creator: Creator;
   onSelect?: (creator: Creator) => void;
+  onRequestCollab?: (creator: Creator) => void;
   isSelected?: boolean;
 }
 
-const CreatorCard: React.FC<CreatorCardProps> = ({ creator, onSelect, isSelected = false }) => {
+const CreatorCard: React.FC<CreatorCardProps> = ({ creator, onSelect, onRequestCollab, isSelected = false }) => {
   const level = getCreatorLevel(creator.subscribers);
   
   const getIcon = (platform: Platform) => {
@@ -89,12 +90,28 @@ const CreatorCard: React.FC<CreatorCardProps> = ({ creator, onSelect, isSelected
             ))}
         </div>
         
-        {/* Collab Fee Display */}
-        <div className="flex flex-col items-end">
-            <span className="text-[10px] text-gray-400 uppercase tracking-wider">Starting at</span>
-            <span className="text-lg font-bold text-white bg-clip-text text-transparent bg-gradient-to-r from-brand-blue to-white">
-                {formatFee(creator.collabFee)}
-            </span>
+        {/* Collab Fee / Request Button */}
+        <div className="relative flex flex-col items-end min-h-[36px] justify-end">
+            {/* Fee Display - Fades out on hover if button exists */}
+            <div className={`flex flex-col items-end transition-all duration-300 transform origin-right ${onRequestCollab ? 'group-hover/card:opacity-0 group-hover/card:translate-y-2 group-hover/card:scale-90' : ''}`}>
+                <span className="text-[10px] text-gray-400 uppercase tracking-wider">Starting at</span>
+                <span className="text-lg font-bold text-white bg-clip-text text-transparent bg-gradient-to-r from-brand-blue to-white">
+                    {formatFee(creator.collabFee)}
+                </span>
+            </div>
+
+            {/* Request Button - Fades in on hover */}
+            {onRequestCollab && (
+                 <button 
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onRequestCollab(creator);
+                    }}
+                    className="absolute bottom-0 right-0 opacity-0 translate-y-2 scale-95 group-hover/card:opacity-100 group-hover/card:translate-y-0 group-hover/card:scale-100 transition-all duration-300 bg-brand-pink hover:bg-brand-plum text-white text-xs font-bold py-2 px-3 rounded-lg shadow-lg border border-brand-pink/50 whitespace-nowrap z-20"
+                 >
+                    Request Collab
+                 </button>
+            )}
         </div>
       </div>
     </div>
